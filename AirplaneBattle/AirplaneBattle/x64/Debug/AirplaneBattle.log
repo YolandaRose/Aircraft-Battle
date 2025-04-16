@@ -1,4 +1,5 @@
 ﻿  main.cpp
+E:\Documents\GitHub\Aircraft-Battle\AirplaneBattle\AirplaneBattle\main.cpp(39,24): warning C4002: 类函数宏的调用“_T”参数过多
   AirplaneBattle.vcxproj -> E:\Documents\GitHub\Aircraft-Battle\AirplaneBattle\x64\Debug\AircraftBattle.exe
   'pwsh.exe' 不是内部或外部命令，也不是可运行的程序
   或批处理文件。
