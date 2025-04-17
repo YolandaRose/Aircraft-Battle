@@ -3,6 +3,8 @@
 #include<conio.h>
 #include<time.h>
 
+#define MAX 10	//定时器最大个数
+
 enum My {
 	WIDTH = 480,	//宽度
 	HEIGHT = 700,	//高度
@@ -38,12 +40,12 @@ void Load() {
 	loadimage(&bk, "images/bk.png");//加载图片：容器，路径，宽，高
 	loadimage(&img_me[0], _T("images/me1.png", 102, 126));//加载图片：容器，路径，宽，高
 	loadimage(&img_me[1], "images/me2.png", 102, 126);//加载图片：容器，路径，宽，高
-	loadimage(&img_bullet[0], "images/bullet1.png", 50, 50);//加载图片：容器，路径，宽，高
-	loadimage(&img_bullet[1], "images/bullet2.png", 50, 50);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[0][0], "images/enemy1.png", 50, 50);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[0][1], "images/enemy1_down1.png", 50, 50);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[1][0], "images/enemy2.png", 50, 50);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[1][1], "images/enemy2_down2.png", 50, 50);//加载图片：容器，路径，宽，高
+	loadimage(&img_bullet[0], "images/bullet1.png", 5, 11);//加载图片：容器，路径，宽，高
+	loadimage(&img_bullet[1], "images/bullet2.png", 5, 11);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[0][0], "images/enemy1.png", 57,43);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[0][1], "images/enemy1_down1.png", 57,43);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[1][0], "images/enemy2.png", 69, 99);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[1][1], "images/enemy2_down2.png", 69, 99);//加载图片：容器，路径，宽，高
 }
 // 载入PNG图并去透明部分
 void drawAlpha(IMAGE* picture, int  picture_x, int picture_y) //x为载入图片的X坐标，y为Y坐标
@@ -85,6 +87,15 @@ void drawAlpha(IMAGE* picture, int  picture_x, int picture_y) //x为载入图片
 	}
 
 }
+//定时器
+bool Timer(int ms, int id) {
+	static DWORD t[MAX];
+	if (clock() - t[id] > ms) {
+		t[id] = clock();
+		return true;
+	}
+	return false;
+}
 //初始化游戏
 void init_game() {
 	Load();//加载图片
@@ -96,7 +107,7 @@ void init_game() {
 	for (int i = 0; i < BULLET_NUM; i++) {
 		bullet[i].x = 0;
 		bullet[i].y = 0;
-		bullet[i].live = false;
+		bullet[i].live = true;
 	}
 }
 
@@ -111,7 +122,17 @@ void Draw() {
 			drawAlpha(&img_bullet[0], bullet[i].x, bullet[i].y);
 		}
 	}
-
+	//敌机
+	for (int i = 0; i < ENEMY_NUM; i++) {
+			if (enemy[i].live) {
+				if (enemy[i].type == BIG) {//大飞机
+					drawAlpha(&img_enemy[1][0], enemy[i].x, enemy[i].y);
+				}
+				else {//小飞机
+					drawAlpha(&img_enemy[0][0], enemy[i].x, enemy[i].y);
+				}
+			}
+		}
 }
 
 //飞机移动
@@ -123,8 +144,8 @@ void Move() {
 	//case 'd':MyPlane.x += PLANE_SPEED; break;//右移-->x坐标增大
 	//}
 
-	////window API
-	 // 处理键盘输入（持续检测）
+	//window API
+	// 处理键盘输入（持续检测）
 	if (GetAsyncKeyState('W') & 0x8000 || GetAsyncKeyState(VK_UP) & 0x8000)
 		MyPlane.y -= PLANE_SPEED;
 	if (GetAsyncKeyState('S') & 0x8000 || GetAsyncKeyState(VK_DOWN) & 0x8000)
@@ -139,6 +160,55 @@ void Move() {
 
 	Sleep(10); // 稍微延迟一下，控制帧率
 }
+
+//创建子弹
+void create_bullet() {
+	for (int i = 0; i < BULLET_NUM; i++) {
+		if (!bullet[i].live) {
+			bullet[i].x = MyPlane.x + (51 - 2.5);//从飞机中心射出
+			bullet[i].y = MyPlane.y;
+			bullet[i].live = true;
+			break;
+		}
+	}
+}
+//子弹移动
+void move_bullet() {
+	for (int i = 0; i < BULLET_NUM; i++) {
+		if (bullet[i].live) {
+			bullet[i].y -= BULLET_SPEED;
+		}
+		if (bullet[i].y < 0) {//子弹超出范围消失
+			bullet[i].live = false;
+		}
+	}
+}
+
+//创建敌机
+void create_enemy() {
+	for (int i = 0; i < ENEMY_NUM; i++) {
+		if (!enemy[i].live) {
+			enemy[i].x = rand()%(WIDTH-51);//从随机位置出现
+			enemy[i].y = 0;//从屏幕上方发出
+			enemy[i].live = true;
+			break;
+		}
+	}
+}
+
+//敌机移动
+void move_enemy() {
+	for (int i = 0; i < ENEMY_NUM; i++) {
+		if (enemy[i].live) {
+			enemy[i].y += ENEMY_SPEED;
+		}
+		if (enemy[i].y > HEIGHT) {
+			enemy[i].live = false;
+		}
+	}
+}
+
+
 int main() {
 
 	//1.创建图形界面窗口
@@ -149,14 +219,27 @@ int main() {
 	//定义变量、赋值
 	//输出
 	init_game();
-	//3.移动
+	//3.自己移动
 	//从键盘获取操作
+	//4. 敌机移动
 	while (1) {
 		Draw();
+		FlushBatchDraw();//刷新
 		Move();
+		if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+			create_bullet();  // 按空格键发射子弹
+		}
+		move_bullet();
+		//使用定时器来生成敌机
+		if (Timer(500, 0)) {
+			create_enemy();//每500ms产生一个敌机
+		}
+		if (Timer(30, 2)) {
+			move_enemy();//每30ms敌机移动
+		}
 	}
+	EndBatchDraw();
 	
-	//4. 
 	
 	//system("pause");
 	return 0;
