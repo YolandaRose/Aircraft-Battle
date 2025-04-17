@@ -195,7 +195,22 @@ void create_enemy() {
 		}
 	}
 }
-
+//敌机血条
+void enemyHP(int i) {
+	int flag = rand() % 10;
+	if (flag > 0 && flag < 2) {
+		enemy[i].type = BIG;
+		enemy[i].hp = 3;
+		enemy[i].width = 69;
+		enemy[i].height = 99;
+	}
+	else {
+		enemy[i].type = SMALL;
+		enemy[i].hp = 1;
+		enemy[i].width = 57;
+		enemy[i].height = 43;
+	}
+}
 //敌机移动
 void move_enemy() {
 	for (int i = 0; i < ENEMY_NUM; i++) {
@@ -207,8 +222,38 @@ void move_enemy() {
 		}
 	}
 }
-
-
+//打飞机
+void play_game() {
+	for (int i = 0; i < ENEMY_NUM; i++) {
+		if (!enemy[i].live) {//敌机不存在
+			continue;
+		}
+		for (int j = 0; j < BULLET_NUM; j++) {
+			if (!bullet[j].live) {//子弹不存在
+				continue;
+			}
+			//敌机、子弹均存在，进行碰撞检测
+			if (bullet[j].x > enemy[i].x && bullet[j].x<enemy[i].x + enemy[i].width &&
+				bullet[j].y>enemy[i].y && bullet[j].y < enemy[i].y + enemy[i].height) {
+				bullet[j].live = false;//消除子弹
+				enemy[i].hp--;//扣一滴血
+			}
+			if (enemy[i].hp == 0) {
+				enemy[i].live = false;//血条为0，清除敌机
+			}
+		}
+	}
+}
+//飞机碰撞检测
+void plane_collision() {
+	for (int i = 0; i < ENEMY_NUM; i++) {
+		if (MyPlane.x >= enemy[i].x && MyPlane.x <= enemy[i].x + enemy[i].width&&
+			MyPlane.y >= enemy[i].y && MyPlane.y <= enemy[i].y + enemy[i].height) {
+			MyPlane.live = false;
+			exit(0);//退出游戏
+		}
+	}
+}
 int main() {
 
 	//1.创建图形界面窗口
@@ -237,6 +282,8 @@ int main() {
 		if (Timer(30, 2)) {
 			move_enemy();//每30ms敌机移动
 		}
+		play_game();
+		plane_collision();
 	}
 	EndBatchDraw();
 	
