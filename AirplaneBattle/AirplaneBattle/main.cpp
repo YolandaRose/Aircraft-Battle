@@ -38,7 +38,7 @@ IMAGE img_bullet[2];//子弹
 IMAGE img_enemy[2][2];//敌机
 void Load() {
 	loadimage(&bk, "images/bk.png");//加载图片：容器，路径，宽，高
-	loadimage(&img_me[0], _T("images/me1.png", 102, 126));//加载图片：容器，路径，宽，高
+	loadimage(&img_me[0], "images/me1.png", 102, 126);//加载图片：容器，路径，宽，高
 	loadimage(&img_me[1], "images/me2.png", 102, 126);//加载图片：容器，路径，宽，高
 	loadimage(&img_bullet[0], "images/bullet1.png", 5, 11);//加载图片：容器，路径，宽，高
 	loadimage(&img_bullet[1], "images/bullet2.png", 5, 11);//加载图片：容器，路径，宽，高
@@ -100,8 +100,10 @@ bool Timer(int ms, int id) {
 void init_game() {
 	Load();//加载图片
 	//设置飞机位置在底部中心
-	MyPlane.x = WIDTH / 2 - 51;
-	MyPlane.y = HEIGHT - 126;
+	MyPlane.width = 102;
+	MyPlane.height = 126;
+	MyPlane.x = WIDTH / 2 - MyPlane.width/2;
+	MyPlane.y = HEIGHT - MyPlane.height;
 	MyPlane.live = true;
 	//初始化子弹
 	for (int i = 0; i < BULLET_NUM; i++) {
@@ -157,7 +159,6 @@ void Move() {
 
 	// ESC 键退出
 	if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)return;
-
 	Sleep(10); // 稍微延迟一下，控制帧率
 }
 
@@ -183,18 +184,6 @@ void move_bullet() {
 		}
 	}
 }
-
-//创建敌机
-void create_enemy() {
-	for (int i = 0; i < ENEMY_NUM; i++) {
-		if (!enemy[i].live) {
-			enemy[i].x = rand()%(WIDTH-51);//从随机位置出现
-			enemy[i].y = 0;//从屏幕上方发出
-			enemy[i].live = true;
-			break;
-		}
-	}
-}
 //敌机血条
 void enemyHP(int i) {
 	int flag = rand() % 10;
@@ -209,6 +198,19 @@ void enemyHP(int i) {
 		enemy[i].hp = 1;
 		enemy[i].width = 57;
 		enemy[i].height = 43;
+	}
+}
+
+//创建敌机
+void create_enemy() {
+	for (int i = 0; i < ENEMY_NUM; i++) {
+		if (!enemy[i].live) {
+			enemy[i].x = rand()%(WIDTH-51);//从随机位置出现
+			enemy[i].y = 0;//从屏幕上方发出
+			enemy[i].live = true;
+			enemyHP(i);//设置敌机血量和类型
+			break;
+		}
 	}
 }
 //敌机移动
@@ -247,8 +249,9 @@ void play_game() {
 //飞机碰撞检测
 void plane_collision() {
 	for (int i = 0; i < ENEMY_NUM; i++) {
-		if (MyPlane.x >= enemy[i].x && MyPlane.x <= enemy[i].x + enemy[i].width&&
-			MyPlane.y >= enemy[i].y && MyPlane.y <= enemy[i].y + enemy[i].height) {
+		if (!enemy[i].live)continue;
+		if (MyPlane.x + MyPlane.width >= enemy[i].x && MyPlane.x <= enemy[i].x + enemy[i].width&&
+			MyPlane.y + MyPlane.height>= enemy[i].y && MyPlane.y <= enemy[i].y + enemy[i].height) {
 			MyPlane.live = false;
 			exit(0);//退出游戏
 		}
@@ -271,12 +274,12 @@ int main() {
 		Draw();
 		FlushBatchDraw();//刷新
 		Move();
-		if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
-			create_bullet();  // 按空格键发射子弹
+		//使用定时器来生成敌机、自己发射子弹
+		if (Timer(500, 0)) {   // 每600ms自动发射子弹
+			create_bullet();
 		}
 		move_bullet();
-		//使用定时器来生成敌机
-		if (Timer(500, 0)) {
+		if (Timer(500, 1)) {
 			create_enemy();//每500ms产生一个敌机
 		}
 		if (Timer(30, 2)) {
@@ -284,6 +287,7 @@ int main() {
 		}
 		play_game();
 		plane_collision();
+		//
 	}
 	EndBatchDraw();
 	
