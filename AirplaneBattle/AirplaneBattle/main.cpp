@@ -9,12 +9,9 @@ enum My {
 	WIDTH = 480,	//宽度
 	HEIGHT = 700,	//高度
 	BULLET_NUM = 30,//子弹数量
-	PLANE_SPEED = 2,//飞机移动速度
-	BULLET_SPEED = 3,//子弹速度
 	BIG,			//大敌机
 	SMALL,			//小敌机
 	ENEMY_NUM = 5,  //敌机数量
-	ENEMY_SPEED = 1,//敌机速度
 };
 
 struct plane {//飞机结构体（自己、敌机、子弹）
@@ -36,14 +33,76 @@ IMAGE bk;//背景
 IMAGE img_me[2];//玩家飞机
 IMAGE img_bullet[2];//子弹
 IMAGE img_enemy[2][2];//敌机
+void Load();
+void drawAlpha(IMAGE* picture, int  picture_x, int picture_y);// 载入PNG图并去透明部分
+bool Timer(int ms, int id);//定时器
+void init_game();//初始化游戏
+void Draw();//绘制游戏
+void Move();//飞机移动
+void create_bullet();//创建子弹
+void move_bullet();//子弹移动
+void enemyHP(int i);//敌机血条
+void create_enemy();//创建敌机
+void move_enemy();//敌机移动
+void play_game();//打飞机
+void plane_collision();//飞机碰撞检测
+void start_menu();//菜单、难度选择
+
+int score = 0;//游戏得分
+int difficulty = 1;//游戏难度
+int PLANE_SPEED = 2,//飞机移动速度
+BULLET_SPEED = 3,//子弹速度
+BULLET_GEN = 600,//子弹生成速度
+ENEMY_SPEED = 1,//敌机速度
+ENEMY_GEN = 500;//敌机生成速度
+int main() {
+
+	//1.创建图形界面窗口
+	initgraph(480, 700);//px像素：宽×高（按照图片大小）
+	
+	//2.贴图
+	//定义变量、赋值
+	//输出
+	init_game();
+	start_menu();//菜单
+	//3.自己移动
+	//从键盘获取操作
+	//4. 敌机移动
+	while (1) {
+		Draw();
+		FlushBatchDraw();//刷新
+		Move();
+		//使用定时器来生成敌机、自己发射子弹
+		if (Timer(BULLET_GEN, 0)) {   // 每600ms自动发射子弹
+			create_bullet();
+		}
+		move_bullet();
+		if (Timer(ENEMY_GEN, 1)) {
+			create_enemy();//每500ms产生一个敌机
+		}
+		if (Timer(30, 2)) {
+			move_enemy();//每30ms敌机移动
+		}
+		play_game();
+		plane_collision();
+		//
+	}
+	EndBatchDraw();
+	
+	
+	//system("pause");
+	return 0;
+}
+
+//具体实现函数
 void Load() {
 	loadimage(&bk, "images/bk.png");//加载图片：容器，路径，宽，高
 	loadimage(&img_me[0], "images/me1.png", 102, 126);//加载图片：容器，路径，宽，高
 	loadimage(&img_me[1], "images/me2.png", 102, 126);//加载图片：容器，路径，宽，高
 	loadimage(&img_bullet[0], "images/bullet1.png", 5, 11);//加载图片：容器，路径，宽，高
 	loadimage(&img_bullet[1], "images/bullet2.png", 5, 11);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[0][0], "images/enemy1.png", 57,43);//加载图片：容器，路径，宽，高
-	loadimage(&img_enemy[0][1], "images/enemy1_down1.png", 57,43);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[0][0], "images/enemy1.png", 57, 43);//加载图片：容器，路径，宽，高
+	loadimage(&img_enemy[0][1], "images/enemy1_down1.png", 57, 43);//加载图片：容器，路径，宽，高
 	loadimage(&img_enemy[1][0], "images/enemy2.png", 69, 99);//加载图片：容器，路径，宽，高
 	loadimage(&img_enemy[1][1], "images/enemy2_down2.png", 69, 99);//加载图片：容器，路径，宽，高
 }
@@ -102,7 +161,7 @@ void init_game() {
 	//设置飞机位置在底部中心
 	MyPlane.width = 102;
 	MyPlane.height = 126;
-	MyPlane.x = WIDTH / 2 - MyPlane.width/2;
+	MyPlane.x = WIDTH / 2 - MyPlane.width / 2;
 	MyPlane.y = HEIGHT - MyPlane.height;
 	MyPlane.live = true;
 	//初始化子弹
@@ -126,15 +185,21 @@ void Draw() {
 	}
 	//敌机
 	for (int i = 0; i < ENEMY_NUM; i++) {
-			if (enemy[i].live) {
-				if (enemy[i].type == BIG) {//大飞机
-					drawAlpha(&img_enemy[1][0], enemy[i].x, enemy[i].y);
-				}
-				else {//小飞机
-					drawAlpha(&img_enemy[0][0], enemy[i].x, enemy[i].y);
-				}
+		if (enemy[i].live) {
+			if (enemy[i].type == BIG) {//大飞机
+				drawAlpha(&img_enemy[1][0], enemy[i].x, enemy[i].y);
+			}
+			else {//小飞机
+				drawAlpha(&img_enemy[0][0], enemy[i].x, enemy[i].y);
 			}
 		}
+	}
+	//显示分数
+	char scoreText[50];//存文字
+	settextcolor(WHITE);//颜色
+	settextstyle(20, 0, _T("黑体"));//大小和字体
+	sprintf_s(scoreText, sizeof(scoreText), "得分：%d", score);
+	outtextxy(10, 10, scoreText);
 }
 
 //飞机移动
@@ -205,7 +270,7 @@ void enemyHP(int i) {
 void create_enemy() {
 	for (int i = 0; i < ENEMY_NUM; i++) {
 		if (!enemy[i].live) {
-			enemy[i].x = rand()%(WIDTH-51);//从随机位置出现
+			enemy[i].x = rand() % (WIDTH - 51);//从随机位置出现
 			enemy[i].y = 0;//从屏幕上方发出
 			enemy[i].live = true;
 			enemyHP(i);//设置敌机血量和类型
@@ -239,6 +304,13 @@ void play_game() {
 				bullet[j].y>enemy[i].y && bullet[j].y < enemy[i].y + enemy[i].height) {
 				bullet[j].live = false;//消除子弹
 				enemy[i].hp--;//扣一滴血
+				//加分
+				if (enemy[i].type == BIG) {
+					score += 20;
+				}
+				else {
+					score += 10;
+				}
 			}
 			if (enemy[i].hp == 0) {
 				enemy[i].live = false;//血条为0，清除敌机
@@ -250,48 +322,63 @@ void play_game() {
 void plane_collision() {
 	for (int i = 0; i < ENEMY_NUM; i++) {
 		if (!enemy[i].live)continue;
-		if (MyPlane.x + MyPlane.width >= enemy[i].x && MyPlane.x <= enemy[i].x + enemy[i].width&&
-			MyPlane.y + MyPlane.height>= enemy[i].y && MyPlane.y <= enemy[i].y + enemy[i].height) {
+		if (MyPlane.x + MyPlane.width >= enemy[i].x && MyPlane.x <= enemy[i].x + enemy[i].width &&
+			MyPlane.y + MyPlane.height >= enemy[i].y && MyPlane.y <= enemy[i].y + enemy[i].height) {
 			MyPlane.live = false;
 			exit(0);//退出游戏
 		}
 	}
 }
-int main() {
+//菜单、难度选择
+void start_menu() {
+	cleardevice();
+	settextstyle(40, 0, "黑体");
+	settextcolor(WHITE);
 
-	//1.创建图形界面窗口
-	initgraph(480, 700);//px像素：宽×高（按照图片大小）
-	HWND hwnd = GetHWnd();   // 获取窗口句柄
-	SetFocus(hwnd);          // 设置窗口为焦点
-	//2.贴图
-	//定义变量、赋值
-	//输出
-	init_game();
-	//3.自己移动
-	//从键盘获取操作
-	//4. 敌机移动
+	outtextxy(200, 100, "飞机大战");
+	settextstyle(20, 0, "黑体");
+
+	outtextxy(200, 200, "按 1 键：简单模式");
+	outtextxy(200, 250, "按 2 键：困难模式");
+	outtextxy(200, 300, "按 3 键：地狱模式");
+
 	while (1) {
-		Draw();
-		FlushBatchDraw();//刷新
-		Move();
-		//使用定时器来生成敌机、自己发射子弹
-		if (Timer(500, 0)) {   // 每600ms自动发射子弹
-			create_bullet();
+		if (_kbhit()) {
+			char ch = _getch();
+			if (ch == '1') {
+				difficulty = 1;
+				break;
+			}
+			else if (ch == '2') {
+				difficulty = 2;
+				break;
+			}
+			else if (ch == '3') {
+				difficulty = 3;
+				break;
+			}
 		}
-		move_bullet();
-		if (Timer(500, 1)) {
-			create_enemy();//每500ms产生一个敌机
-		}
-		if (Timer(30, 2)) {
-			move_enemy();//每30ms敌机移动
-		}
-		play_game();
-		plane_collision();
-		//
+		Sleep(50); // 减少CPU占用
 	}
-	EndBatchDraw();
-	
-	
-	//system("pause");
-	return 0;
+}
+void Difficulty() {
+	if (difficulty == 1) {//简单
+		BULLET_SPEED = 3;
+		BULLET_GEN = 600;
+		ENEMY_SPEED = 1;
+		ENEMY_GEN = 600;
+	}
+	else if (difficulty == 2) {//困难
+		BULLET_SPEED = 6;
+		BULLET_GEN = 400;
+		ENEMY_SPEED = 5;
+		ENEMY_GEN = 300;
+	}
+	else if (difficulty == 3) {//地狱
+		BULLET_SPEED = 9;
+		BULLET_GEN = 200;
+		ENEMY_SPEED = 10;
+		ENEMY_GEN = 100;
+	}
+
 }
