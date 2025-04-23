@@ -2,7 +2,6 @@
 #include<easyx.h>
 #include<conio.h>
 #include<time.h>
-
 #define MAX 10	//定时器最大个数
 
 enum My {
@@ -47,14 +46,20 @@ void move_enemy();//敌机移动
 void play_game();//打飞机
 void plane_collision();//飞机碰撞检测
 void start_menu();//菜单、难度选择
+void Difficulty();//难度设置
+void game_loop();//游戏循环
 
+//全局变量设置
 int score = 0;//游戏得分
 int difficulty = 1;//游戏难度
 int PLANE_SPEED = 2,//飞机移动速度
 BULLET_SPEED = 3,//子弹速度
 BULLET_GEN = 600,//子弹生成速度
 ENEMY_SPEED = 1,//敌机速度
-ENEMY_GEN = 500;//敌机生成速度
+ENEMY_GEN = 500;//敌机生成速度 
+bool isPaused = false;//暂停
+bool restartGame = false;//重新开始
+
 int main() {
 
 	//1.创建图形界面窗口
@@ -63,33 +68,19 @@ int main() {
 	//2.贴图
 	//定义变量、赋值
 	//输出
-	init_game();
-	start_menu();//菜单
-	//3.自己移动
-	//从键盘获取操作
-	//4. 敌机移动
+	Draw();
+	
 	while (1) {
-		Draw();
 		FlushBatchDraw();//刷新
-		Move();
-		//使用定时器来生成敌机、自己发射子弹
-		if (Timer(BULLET_GEN, 0)) {   // 每600ms自动发射子弹
-			create_bullet();
-		}
-		move_bullet();
-		if (Timer(ENEMY_GEN, 1)) {
-			create_enemy();//每500ms产生一个敌机
-		}
-		if (Timer(30, 2)) {
-			move_enemy();//每30ms敌机移动
-		}
-		play_game();
-		plane_collision();
-		//
+		init_game();
+		start_menu();//菜单
+		restartGame = false;
+		isPaused = false;
+		//3.游戏循环
+		game_loop();
+		if (!restartGame) break;     // 如果不是按R重启，说明是正常退出
+		EndBatchDraw();
 	}
-	EndBatchDraw();
-	
-	
 	//system("pause");
 	return 0;
 }
@@ -204,13 +195,6 @@ void Draw() {
 
 //飞机移动
 void Move() {
-	//switch (_getch()) {
-	//case 'w':MyPlane.y -= PLANE_SPEED; break;//上移-->y坐标减小
-	//case 's':MyPlane.y += PLANE_SPEED; break;//下移-->y坐标增大
-	//case 'a':MyPlane.x -= PLANE_SPEED; break;//左移-->x坐标减小
-	//case 'd':MyPlane.x += PLANE_SPEED; break;//右移-->x坐标增大
-	//}
-
 	//window API
 	// 处理键盘输入（持续检测）
 	if (GetAsyncKeyState('W') & 0x8000 || GetAsyncKeyState(VK_UP) & 0x8000)
@@ -329,6 +313,26 @@ void plane_collision() {
 		}
 	}
 }
+void Difficulty() {
+	if (difficulty == 1) {//简单
+		BULLET_SPEED = 5;
+		BULLET_GEN = 500;
+		ENEMY_SPEED = 1;
+		ENEMY_GEN = 400;
+	}
+	else if (difficulty == 2) {//困难
+		BULLET_SPEED = 10;
+		BULLET_GEN = 250;
+		ENEMY_SPEED = 5;
+		ENEMY_GEN = 200;
+	}
+	else if (difficulty == 3) {//地狱
+		BULLET_SPEED = 30;
+		BULLET_GEN = 100;
+		ENEMY_SPEED = 10;
+		ENEMY_GEN = 100;
+	}
+}
 //菜单、难度选择
 void start_menu() {
 	cleardevice();
@@ -358,27 +362,49 @@ void start_menu() {
 				break;
 			}
 		}
+		Difficulty();//设置子弹和敌机属性为对应难度等级
 		Sleep(50); // 减少CPU占用
 	}
 }
-void Difficulty() {
-	if (difficulty == 1) {//简单
-		BULLET_SPEED = 3;
-		BULLET_GEN = 600;
-		ENEMY_SPEED = 1;
-		ENEMY_GEN = 600;
-	}
-	else if (difficulty == 2) {//困难
-		BULLET_SPEED = 6;
-		BULLET_GEN = 400;
-		ENEMY_SPEED = 5;
-		ENEMY_GEN = 300;
-	}
-	else if (difficulty == 3) {//地狱
-		BULLET_SPEED = 9;
-		BULLET_GEN = 200;
-		ENEMY_SPEED = 10;
-		ENEMY_GEN = 100;
+void game_loop() {
+	BeginBatchDraw();  // 开启双缓冲
+
+	while (1) {
+		// 按键判断：暂停或重新开始
+		if (_kbhit()) {
+			char ch = _getch();
+			if (ch == 'p' || ch == 'P') {
+				isPaused = !isPaused;
+			}
+			else if (ch == 'r' || ch == 'R') {
+				restartGame = true;
+				break;
+			}
+		}
+
+		if (isPaused) continue;
+
+		Draw();
+		FlushBatchDraw();
+		Move();
+
+		if (Timer(BULLET_GEN, 0)) {
+			create_bullet();
+		}
+		move_bullet();
+
+		if (Timer(ENEMY_GEN, 1)) {
+			create_enemy();
+		}
+		if (Timer(30, 2)) {
+			move_enemy();
+		}
+
+		play_game();
+		plane_collision();
+
+		Sleep(10); // 控制帧率
 	}
 
+	EndBatchDraw(); // 结束双缓冲
 }
